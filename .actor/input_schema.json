@@ -18,6 +18,12 @@
             "minimum": 0,
             "maximum": 10000
         },
+        "debug": {
+            "title": "Debug Artifacts",
+            "type": "boolean",
+            "description": "When enabled, saves HTML and a screenshot if extraction returns zero reviews.",
+            "default": false
+        },
         "proxyConfiguration": {
             "title": "Proxy Configuration",
             "type": "object",
