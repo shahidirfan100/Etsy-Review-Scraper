@@ -5,7 +5,7 @@
 
 import { PlaywrightCrawler } from '@crawlee/playwright';
 import { Actor, log } from 'apify';
-import { launchOptions } from 'camoufox-js';
+import { launchOptions as camoufoxLaunchOptions } from 'camoufox-js';
 import { firefox } from 'playwright';
 import * as cheerio from 'cheerio';
 
@@ -287,8 +287,8 @@ function extractReviewsFromHtml(html) {
 function detectBlockReason(html) {
     const text = html.toLowerCase();
     if (text.includes('captcha') || text.includes('verify')) return 'captcha';
-    if (text.includes('access denied') || text.includes('forbidden')) return 'blocked';
-    if (text.includes('unusual traffic') || text.includes('robot')) return 'bot';
+    if (text.includes('access blocked') || text.includes('access denied') || text.includes('forbidden')) return 'blocked';
+    if (text.includes('unusual activity') || text.includes('unusual traffic') || text.includes('robot')) return 'bot';
     return null;
 }
 
@@ -493,6 +493,15 @@ try {
         navigationTimeoutSecs: 120,
         requestHandlerTimeoutSecs: 300,
         maxRequestRetries: 5,
+        useSessionPool: true,
+        persistCookiesPerSession: true,
+        sessionPoolOptions: {
+            maxPoolSize: 5,
+            sessionOptions: {
+                maxUsageCount: 2,
+                maxErrorScore: 1
+            }
+        },
 
         postNavigationHooks: [
             async ({ handleCloudflareChallenge }) => {
@@ -503,19 +512,23 @@ try {
         launchContext: {
             launcher: firefox,
             // Camoufox launch options for stealth
-            launchOptions: await launchOptions({
+            launchOptions: await camoufoxLaunchOptions({
                 headless: true,
+                proxy: await proxyConfiguration.newUrl(),
                 geoip: true
             })
         },
 
-        async requestHandler({ page, request }) {
+        async requestHandler({ page, request, session }) {
             pagesProcessed++;
             log.info(`Processing page ${pagesProcessed}: ${request.url}`);
 
             try {
                 const apiCollector = createApiResponseCollector();
                 page.on('response', apiCollector.onResponse);
+
+                await page.waitForLoadState('domcontentloaded');
+                await page.waitForTimeout(1500 + Math.random() * 1500);
 
                 // Wait for page to settle and simulate human behavior
                 await page.waitForTimeout(3000 + Math.random() * 2000);
@@ -569,6 +582,10 @@ try {
                         const screenshot = await page.screenshot({ fullPage: true });
                         await Actor.setValue(`DEBUG_${pagesProcessed}.png`, screenshot, { contentType: 'image/png' });
                         await Actor.setValue(`DEBUG_${pagesProcessed}.html`, html, { contentType: 'text/html' });
+                    }
+                    if (blockReason) {
+                        session?.retire();
+                        throw new Error(`Blocked: ${blockReason}`);
                     }
                 }
 
@@ -626,7 +643,8 @@ try {
             }
         },
 
-        async failedRequestHandler({ request }, error) {
+        async failedRequestHandler({ request, session }, error) {
+            session?.retire();
             log.error(`Request ${request.url} failed: ${error.message}`);
         }
     });
