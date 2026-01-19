@@ -1,0 +1,38 @@
+{
+    "title": "Etsy Reviews Scraper Input",
+    "type": "object",
+    "schemaVersion": 1,
+    "properties": {
+        "startUrl": {
+            "title": "Shop Reviews URL",
+            "type": "string",
+            "description": "The URL of the shop's review section. Example: https://www.etsy.com/shop/SOLELYWHIMSICAL#reviews",
+            "editor": "textfield",
+            "prefill": "https://www.etsy.com/shop/SolelyWhimsical#reviews"
+        },
+        "results_wanted": {
+            "title": "Maximum Reviews",
+            "type": "integer",
+            "description": "Maximum number of reviews to scrape (0 = unlimited). Default is 20.",
+            "default": 20,
+            "minimum": 0,
+            "maximum": 10000
+        },
+        "proxyConfiguration": {
+            "title": "Proxy Configuration",
+            "type": "object",
+            "description": "Proxy settings. Residential proxies are highly recommended to bypass Etsy's anti-bot protection.",
+            "editor": "proxy",
+            "default": {
+                "useApifyProxy": true,
+                "apifyProxyGroups": [
+                    "RESIDENTIAL"
+                ]
+            }
+        }
+    },
+    "required": [
+        "startUrl"
+    ],
+    "additionalProperties": false
+}

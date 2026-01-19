@@ -1,0 +1,54 @@
+{
+    "actorSpecification": 1,
+    "fields": {},
+    "views": {
+        "overview": {
+            "title": "Shop Reviews Overview",
+            "description": "Complete view of all scraped Etsy shop reviews",
+            "transformation": {
+                "fields": [
+                    "username",
+                    "rating",
+                    "comment",
+                    "date",
+                    "item_title",
+                    "item_url",
+                    "item_image"
+                ]
+            },
+            "display": {
+                "component": "table",
+                "properties": {
+                    "username": {
+                        "label": "Reviewer Name",
+                        "format": "text"
+                    },
+                    "rating": {
+                        "label": "Rating",
+                        "format": "number"
+                    },
+                    "comment": {
+                        "label": "Review Text",
+                        "format": "text"
+                    },
+                    "date": {
+                        "label": "Review Date",
+                        "format": "text"
+                    },
+                    "item_title": {
+                        "label": "Product Reviewed",
+                        "format": "text"
+                    },
+                    "item_url": {
+                        "label": "Product URL",
+                        "format": "link"
+                    },
+                    "item_image": {
+                        "label": "Product Image",
+                        "format": "image"
+                    }
+                }
+            }
+        }
+    }
+}
