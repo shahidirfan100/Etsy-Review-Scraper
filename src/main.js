@@ -478,9 +478,10 @@ try {
         debug
     });
 
-    const proxyConfiguration = await Actor.createProxyConfiguration(
-        proxyConfigurationInput || { useApifyProxy: true, groups: ['RESIDENTIAL'] }
-    );
+    const proxyConfiguration = await Actor.createProxyConfiguration({
+        checkAccess: true,
+        ...(proxyConfigurationInput || { useApifyProxy: true, apifyProxyGroups: ['RESIDENTIAL'] })
+    });
 
     let totalReviewsScraped = 0;
     let pagesProcessed = 0;
@@ -509,6 +510,14 @@ try {
             }
         ],
 
+        browserPoolOptions: {
+            useFingerprints: true,
+            fingerprintOptions: {
+                browsers: ['firefox'],
+                devices: ['desktop']
+            }
+        },
+
         launchContext: {
             launcher: firefox,
             // Camoufox launch options for stealth
@@ -529,6 +538,18 @@ try {
 
                 await page.waitForLoadState('domcontentloaded');
                 await page.waitForTimeout(1500 + Math.random() * 1500);
+
+                const earlyHtml = await page.content();
+                const earlyBlockReason = detectBlockReason(earlyHtml);
+                if (earlyBlockReason) {
+                    if (debug) {
+                        const screenshot = await page.screenshot({ fullPage: true });
+                        await Actor.setValue(`DEBUG_${pagesProcessed}_early.png`, screenshot, { contentType: 'image/png' });
+                        await Actor.setValue(`DEBUG_${pagesProcessed}_early.html`, earlyHtml, { contentType: 'text/html' });
+                    }
+                    session?.retire();
+                    throw new Error(`Blocked early: ${earlyBlockReason}`);
+                }
 
                 // Wait for page to settle and simulate human behavior
                 await page.waitForTimeout(3000 + Math.random() * 2000);
