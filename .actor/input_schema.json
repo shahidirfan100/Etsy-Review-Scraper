@@ -24,6 +24,14 @@
             "description": "When enabled, saves HTML and a screenshot if extraction returns zero reviews.",
             "default": false
         },
+        "maxRequestRetries": {
+            "title": "Max Request Retries",
+            "type": "integer",
+            "description": "Maximum retries for a page when blocked or failing.",
+            "default": 3,
+            "minimum": 0,
+            "maximum": 10
+        },
         "proxyConfiguration": {
             "title": "Proxy Configuration",
             "type": "object",

@@ -292,6 +292,22 @@ function detectBlockReason(html) {
     return null;
 }
 
+function extractBlockDetails(html) {
+    try {
+        const $ = cheerio.load(html);
+        const text = normalizeText($('body').text());
+        const idMatch = text.match(/\bID:\s*([a-z0-9-]{8,})\b/i);
+        const ipMatch = text.match(/\bIP\s*([0-9]{1,3}(\.[0-9]{1,3}){3})\b/i);
+        return {
+            requestId: idMatch?.[1] || null,
+            ip: ipMatch?.[1] || null,
+            snippet: text.slice(0, 800)
+        };
+    } catch (err) {
+        return { requestId: null, ip: null, snippet: null };
+    }
+}
+
 function mergeReviews(...arrays) {
     const merged = [];
     const seen = new Set();
@@ -461,6 +477,7 @@ try {
         startUrl,
         results_wanted = 20,
         debug = false,
+        maxRequestRetries = 3,
         proxyConfiguration: proxyConfigurationInput
     } = input;
 
@@ -475,7 +492,8 @@ try {
     log.info('Starting Etsy Reviews Scraper', {
         startUrl: normalizedStartUrl,
         results_wanted,
-        debug
+        debug,
+        maxRequestRetries
     });
 
     const proxyConfiguration = await Actor.createProxyConfiguration({
@@ -493,7 +511,7 @@ try {
         maxConcurrency: 1, // Keep it low for stealth
         navigationTimeoutSecs: 120,
         requestHandlerTimeoutSecs: 300,
-        maxRequestRetries: 5,
+        maxRequestRetries,
         useSessionPool: true,
         persistCookiesPerSession: true,
         sessionPoolOptions: {
@@ -542,11 +560,19 @@ try {
                 const earlyHtml = await page.content();
                 const earlyBlockReason = detectBlockReason(earlyHtml);
                 if (earlyBlockReason) {
+                    const details = extractBlockDetails(earlyHtml);
                     if (debug) {
                         const screenshot = await page.screenshot({ fullPage: true });
                         await Actor.setValue(`DEBUG_${pagesProcessed}_early.png`, screenshot, { contentType: 'image/png' });
                         await Actor.setValue(`DEBUG_${pagesProcessed}_early.html`, earlyHtml, { contentType: 'text/html' });
                     }
+                    await Actor.setValue(`BLOCKED_${pagesProcessed}.json`, {
+                        stage: 'early',
+                        url: request.url,
+                        reason: earlyBlockReason,
+                        ...details,
+                        timestamp: new Date().toISOString()
+                    });
                     session?.retire();
                     throw new Error(`Blocked early: ${earlyBlockReason}`);
                 }
@@ -605,6 +631,14 @@ try {
                         await Actor.setValue(`DEBUG_${pagesProcessed}.html`, html, { contentType: 'text/html' });
                     }
                     if (blockReason) {
+                        const details = extractBlockDetails(html);
+                        await Actor.setValue(`BLOCKED_${pagesProcessed}.json`, {
+                            stage: 'post-extract',
+                            url: request.url,
+                            reason: blockReason,
+                            ...details,
+                            timestamp: new Date().toISOString()
+                        });
                         session?.retire();
                         throw new Error(`Blocked: ${blockReason}`);
                     }
