@@ -31,7 +31,7 @@ Important: Before you begin, fill in the `generatedBy` property in the meta sect
 - use semantic CSS selectors and fallback strategies for missing elements
 - respect robots.txt, ToS, and implement rate limiting with delays
 - check which tools (cheerio/playwright/crawlee) are installed before applying guidance
-- use `apify/log` package for logging (censors sensitive data)
+- use `Actor.log` for logging (censors sensitive data)
 - implement readiness probe handler for standby Actors
 
 ## Don't
@@ -49,30 +49,25 @@ Important: Before you begin, fill in the `generatedBy` property in the meta sect
 
 ## Logging
 
-- **ALWAYS use the `apify/log` package for logging** - This package contains critical security logic including censoring sensitive data (Apify tokens, API keys, credentials) to prevent accidental exposure in logs
+- **ALWAYS use `Actor.log` for logging** - This logger contains critical security logic including censoring sensitive data (Apify tokens, API keys, credentials) to prevent accidental exposure in logs
 
-### Available Log Levels in `apify/log`
+### Available Log Levels
 
-The Apify log package provides the following methods for logging:
+The Apify Actor logger provides the following methods for logging:
 
-- `log.debug()` - Debug level logs (detailed diagnostic information)
-- `log.info()` - Info level logs (general informational messages)
-- `log.warning()` - Warning level logs (warning messages for potentially problematic situations)
-- `log.warningOnce()` - Warning level logs (same warning message logged only once)
-- `log.error()` - Error level logs (error messages for failures)
-- `log.exception()` - Exception level logs (for exceptions with stack traces)
-- `log.perf()` - Performance level logs (performance metrics and timing information)
-- `log.deprecated()` - Deprecation level logs (warnings about deprecated code)
-- `log.softFail()` - Soft failure logs (non-critical failures that don't stop execution, e.g., input validation errors, skipped items)
-- `log.internal()` - Internal level logs (internal/system messages)
+- `Actor.log.debug()` - Debug level logs (detailed diagnostic information)
+- `Actor.log.info()` - Info level logs (general informational messages)
+- `Actor.log.warning()` - Warning level logs (warning messages for potentially problematic situations)
+- `Actor.log.error()` - Error level logs (error messages for failures)
+- `Actor.log.exception()` - Exception level logs (for exceptions with stack traces)
 
 **Best practices:**
 
-- Use `log.debug()` for detailed operation-level diagnostics (inside functions)
-- Use `log.info()` for general informational messages (API requests, successful operations)
-- Use `log.warning()` for potentially problematic situations (validation failures, unexpected states)
-- Use `log.error()` for actual errors and failures
-- Use `log.exception()` for caught exceptions with stack traces
+- Use `Actor.log.debug()` for detailed operation-level diagnostics (inside functions)
+- Use `Actor.log.info()` for general informational messages (API requests, successful operations)
+- Use `Actor.log.warning()` for potentially problematic situations (validation failures, unexpected states)
+- Use `Actor.log.error()` for actual errors and failures
+- Use `Actor.log.exception()` for caught exceptions with stack traces
 
 ## Standby Mode
 
@@ -83,16 +78,22 @@ You can recognize a standby Actor by checking the `usesStandbyMode` property in 
 
 ### Readiness Probe Implementation Example
 
-```javascript
-// Apify standby readiness probe at root path
-app.get('/', (req, res) => {
-    res.writeHead(200, { 'Content-Type': 'text/plain' });
-    if (req.headers['x-apify-container-server-readiness-probe']) {
-        res.end('Readiness probe OK\n');
-    } else {
-        res.end('Actor is ready\n');
-    }
-});
+```python
+# Apify standby readiness probe
+from http.server import SimpleHTTPRequestHandler
+
+class GetHandler(SimpleHTTPRequestHandler):
+    def do_GET(self):
+        # Handle Apify standby readiness probe
+        if 'x-apify-container-server-readiness-probe' in self.headers:
+            self.send_response(200)
+            self.end_headers()
+            self.wfile.write(b'Readiness probe OK')
+            return
+
+        self.send_response(200)
+        self.end_headers()
+        self.wfile.write(b'Actor is ready')
 ```
 
 Key points:
@@ -119,9 +120,9 @@ apify help                             # List all commands
 
 Allowed without prompt:
 
-- read files with `Actor.getValue()`
-- push data with `Actor.pushData()`
-- set values with `Actor.setValue()`
+- read files with `Actor.get_value()`
+- push data with `Actor.push_data()`
+- set values with `Actor.set_value()`
 - enqueue requests to RequestQueue
 - run locally with `apify run`
 
@@ -273,27 +274,32 @@ The dataset schema defines how your Actor's output data is structured, transform
 
 Consider an example Actor that calls `Actor.pushData()` to store data into dataset:
 
-```javascript
-import { Actor } from 'apify';
-// Initialize the JavaScript SDK
-await Actor.init();
+```python
+# Dataset push example (Python)
+import asyncio
+from datetime import datetime
+from apify import Actor
 
-/**
- * Actor code
- */
-await Actor.pushData({
-    numericField: 10,
-    pictureUrl: 'https://www.google.com/images/branding/googlelogo/2x/googlelogo_color_92x30dp.png',
-    linkUrl: 'https://google.com',
-    textField: 'Google',
-    booleanField: true,
-    dateField: new Date(),
-    arrayField: ['#hello', '#world'],
-    objectField: {},
-});
+async def main():
+    await Actor.init()
 
-// Exit successfully
-await Actor.exit();
+    # Actor code
+    await Actor.push_data({
+        'numericField': 10,
+        'pictureUrl': 'https://www.google.com/images/branding/googlelogo/2x/googlelogo_color_92x30dp.png',
+        'linkUrl': 'https://google.com',
+        'textField': 'Google',
+        'booleanField': True,
+        'dateField': datetime.now().isoformat(),
+        'arrayField': ['#hello', '#world'],
+        'objectField': {},
+    })
+
+    # Exit successfully
+    await Actor.exit()
+
+if __name__ == '__main__':
+    asyncio.run(main())
 ```
 
 To set up the Actor's output tab UI, reference a dataset schema file in `.actor/actor.json`:
@@ -445,20 +451,26 @@ The key-value store schema organizes keys into logical groups called collections
 
 Consider an example Actor that calls `Actor.setValue()` to save records into the key-value store:
 
-```javascript
-import { Actor } from 'apify';
-// Initialize the JavaScript SDK
-await Actor.init();
+```python
+# Key-Value Store set example (Python)
+import asyncio
+from apify import Actor
 
-/**
- * Actor code
- */
-await Actor.setValue('document-1', 'my text data', { contentType: 'text/plain' });
+async def main():
+    await Actor.init()
 
-await Actor.setValue(`image-${imageID}`, imageBuffer, { contentType: 'image/jpeg' });
+    # Actor code
+    await Actor.set_value('document-1', 'my text data', content_type='text/plain')
 
-// Exit successfully
-await Actor.exit();
+    image_id = '123'          # example placeholder
+    image_buffer = b'...'     # bytes buffer with image data
+    await Actor.set_value(f'image-{image_id}', image_buffer, content_type='image/jpeg')
+
+    # Exit successfully
+    await Actor.exit()
+
+if __name__ == '__main__':
+    asyncio.run(main())
 ```
 
 To configure the key-value store schema, reference a schema file in `.actor/actor.json`:
@@ -528,12 +540,12 @@ Then create the key-value store schema in `.actor/key_value_store_schema.json`:
 
 - `title` (string, required) - Collection title shown in UI tabs
 - `description` (string, optional) - Description appearing in UI tooltips
-- `key` (string, conditional) - Single specific key for this collection
-- `keyPrefix` (string, conditional) - Prefix for keys included in this collection
+- `key` (string, conditional\*) - Single specific key for this collection
+- `keyPrefix` (string, conditional\*) - Prefix for keys included in this collection
 - `contentTypes` (string[], optional) - Allowed content types for validation
 - `jsonSchema` (object, optional) - JSON Schema Draft 07 format for `application/json` content type validation
 
-Either `key` or `keyPrefix` must be specified for each collection, but not both.
+\*Either `key` or `keyPrefix` must be specified for each collection, but not both.
 
 ## Apify MCP Tools
 

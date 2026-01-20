@@ -2,20 +2,21 @@
     "actorSpecification": 1,
     "name": "etsy-reviews-scraper",
     "title": "Etsy Reviews Scraper",
-    "description": "Extract reviews from any Etsy shop. Get structured data including reviewer names, ratings, comments, dates, and associated product info. Perfect for sentiment analysis, competitor research, and brand monitoring.",
-    "version": "1.0",
+    "description": "Extract reviews from any Etsy shop. Get structured data including reviewer names, ratings, comments, dates, and associated product info. Perfect for sentiment analysis, competitor research, and brand monitoring. Powered by PlaywrightCrawler with Camoufox for stealth.",
+    "version": "1.0.0",
     "categories": [
         "ECOMMERCE",
         "BUSINESS"
     ],
     "meta": {
-        "templateId": "etsy-products-scraper",
-        "generatedBy": "GPT-5.2"
+        "templateId": "etsy-reviews-scraper",
+        "generatedBy": "Claude Haiku 4.5"
     },
     "input": "./input_schema.json",
     "output": "./output_schema.json",
     "storages": {
         "dataset": "./dataset_schema.json"
     },
-    "dockerfile": "../Dockerfile"
+    "dockerfile": "../Dockerfile",
+    "usesStandbyMode": true
 }
